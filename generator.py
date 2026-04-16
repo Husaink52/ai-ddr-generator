@@ -11,13 +11,14 @@ You are a STRICT building inspection analyst.
 Generate a DDR report using the following rules:
 
 - Do NOT invent information
-- Use only provided data
+- Use ONLY provided data
 - If information is missing → write "Not Available"
 - If conflict exists → clearly mention "Conflict detected"
-- Avoid excessive grouping of issues
+- Avoid repeating similar observations
+- Group similar issues logically
 - Keep observations specific and actionable
-- If area is unknown, logically group instead of repeating "Unknown"
 - Use simple client-friendly language
+- Include thermal reasoning where relevant
 
 INPUT DATA:
 {merged_data}

@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DDR Report Generator — AI-Powered Diagnostic Reports</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0e0f0f;
+    --surface: #161818;
+    --surface2: #1e2020;
+    --border: #2a2d2d;
+    --accent: #d4a853;
+    --accent2: #e8c882;
+    --text: #e8e6e0;
+    --text-muted: #7a7870;
+    --text-dim: #4a4845;
+    --danger: #c0392b;
+    --success: #27ae60;
+    --info: #2980b9;
+    --warn: #e67e22;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo-mark {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    color: #0e0f0f;
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+  .logo-text {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    letter-spacing: 0.02em;
+  }
+  .logo-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-left: auto;
+  }
+
+  /* MAIN LAYOUT */
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  .hero {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    line-height: 1.15;
+    margin-bottom: 12px;
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .hero p {
+    color: var(--text-muted);
+    font-size: 15px;
+    max-width: 520px;
+    margin: 0 auto;
+    line-height: 1.7;
+  }
+
+  /* UPLOAD ZONE */
+  .upload-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .upload-card {
+    background: var(--surface);
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-card:hover { border-color: var(--accent); background: var(--surface2); }
+  .upload-card.has-file { border-style: solid; border-color: var(--success); }
+  .upload-card.dragging { border-color: var(--accent); background: rgba(212,168,83,0.06); }
+  .upload-card input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+  .upload-icon {
+    font-size: 28px; margin-bottom: 10px;
+  }
+  .upload-label {
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .upload-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .upload-filename {
+    font-size: 12px;
+    color: var(--success);
+    font-family: 'DM Mono', monospace;
+    margin-top: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* GENERATE BUTTON */
+  .generate-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #0e0f0f;
+    border: none;
+    border-radius: 10px;
+    padding: 16px 24px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    letter-spacing: 0.01em;
+  }
+  .generate-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .generate-btn:not(:disabled):hover { opacity: 0.9; transform: translateY(-1px); }
+  .generate-btn:not(:disabled):active { transform: translateY(0); }
+
+  /* STATUS */
+  .status-bar {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-top: 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--accent2);
+    align-items: center;
+    gap: 12px;
+  }
+  .status-bar.active { display: flex; }
+  .spinner {
+    width: 16px; height: 16px; flex-shrink: 0;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ERROR */
+  .error-box {
+    display: none;
+    background: rgba(192,57,43,0.1);
+    border: 1px solid rgba(192,57,43,0.3);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-top: 16px;
+    font-size: 14px;
+    color: #e74c3c;
+    line-height: 1.5;
+  }
+  .error-box.active { display: block; }
+
+  /* REPORT OUTPUT */
+  #report-output {
+    display: none;
+    margin-top: 48px;
+    animation: fadeUp 0.5s ease;
+  }
+  #report-output.active { display: block; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .report-header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+  }
+  .report-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    line-height: 1.2;
+  }
+  .report-meta {
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-muted);
+    text-align: right;
+    line-height: 1.8;
+  }
+
+  /* SECTION CARDS */
+  .report-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .report-section:hover { border-color: var(--border); }
+
+  .section-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    user-select: none;
+  }
+  .section-num {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    color: #0e0f0f;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .section-title {
+    font-weight: 600;
+    font-size: 15px;
+    flex: 1;
+  }
+  .section-chevron {
+    color: var(--text-muted);
+    font-size: 12px;
+    transition: transform 0.2s;
+  }
+  .section-header.collapsed .section-chevron { transform: rotate(-90deg); }
+
+  .section-body {
+    padding: 20px;
+    line-height: 1.75;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .section-body.hidden { display: none; }
+
+  /* severity badges */
+  .severity-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .severity-high { background: rgba(192,57,43,0.2); color: #e74c3c; border: 1px solid rgba(192,57,43,0.3); }
+  .severity-medium { background: rgba(230,126,34,0.2); color: #e67e22; border: 1px solid rgba(230,126,34,0.3); }
+  .severity-low { background: rgba(39,174,96,0.2); color: #27ae60; border: 1px solid rgba(39,174,96,0.3); }
+
+  /* tables inside report */
+  .report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 12px;
+  }
+  .report-table th {
+    background: var(--surface2);
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .report-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .report-table tr:last-child td { border-bottom: none; }
+  .report-table tr:hover td { background: var(--surface2); }
+
+  /* observations list */
+  .obs-item {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0 14px;
+    align-items: start;
+  }
+  .obs-item:last-child { border-bottom: none; }
+  .obs-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-top: 7px;
+    flex-shrink: 0;
+  }
+  .obs-text { font-size: 14px; }
+  .obs-area {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  /* thermal tags */
+  .thermal-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(41,128,185,0.15);
+    border: 1px solid rgba(41,128,185,0.3);
+    color: #5dade2;
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    margin: 2px;
+  }
+
+  /* action items */
+  .action-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .action-item:last-child { border-bottom: none; }
+  .action-priority {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 1px;
+  }
+  .priority-immediate { background: rgba(192,57,43,0.2); color: #e74c3c; border: 1px solid rgba(192,57,43,0.3); }
+  .priority-short { background: rgba(230,126,34,0.2); color: #e67e22; border: 1px solid rgba(230,126,34,0.3); }
+  .priority-long { background: rgba(39,174,96,0.2); color: #27ae60; border: 1px solid rgba(39,174,96,0.3); }
+
+  /* missing info */
+  .missing-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 12px;
+    background: rgba(230,126,34,0.07);
+    border-left: 3px solid var(--warn);
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 8px;
+    font-size: 13.5px;
+  }
+  .missing-item:last-child { margin-bottom: 0; }
+
+  /* DOWNLOAD */
+  .actions-bar {
+    display: flex;
+    gap: 12px;
+    margin-top: 28px;
+  }
+  .action-btn {
+    flex: 1;
+    padding: 12px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.2s, border-color 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .action-btn:hover { background: var(--surface2); border-color: var(--accent); }
+  .action-btn.primary { background: var(--accent); color: #0e0f0f; border-color: var(--accent); }
+  .action-btn.primary:hover { opacity: 0.9; }
+
+  /* REPORT CONTENT STYLES */
+  .section-body p { margin-bottom: 10px; }
+  .section-body ul { padding-left: 20px; margin-bottom: 10px; }
+  .section-body li { margin-bottom: 6px; }
+  .section-body strong { color: var(--accent2); }
+  .na-text { color: var(--text-dim); font-style: italic; font-size: 13px; }
+
+  /* responsive */
+  @media (max-width: 600px) {
+    .upload-section { grid-template-columns: 1fr; }
+    header { padding: 16px 20px; }
+    .container { padding: 32px 16px 60px; }
+    .report-header { flex-direction: column; align-items: flex-start; }
+    .report-meta { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">D</div>
+  <div class="logo-text">DDR Generator</div>
+  <div class="logo-sub">AI-Powered · Diagnostic Reports</div>
+</header>
+
+<div class="container">
+
+  <div class="hero">
+    <h1>Turn Raw Inspections Into<br><em>Structured Diagnostic Reports</em></h1>
+    <p>Upload your Inspection Report and Thermal Images PDF. The AI extracts, merges, and structures everything into a client-ready DDR in seconds.</p>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="upload-section">
+    <div class="upload-card" id="inspection-drop">
+      <input type="file" id="inspection-file" accept=".pdf" />
+      <div class="upload-icon">📋</div>
+      <div class="upload-label">Inspection Report</div>
+      <div class="upload-hint">Drop PDF or click to browse</div>
+      <div class="upload-filename" id="inspection-name"></div>
+    </div>
+    <div class="upload-card" id="thermal-drop">
+      <input type="file" id="thermal-file" accept=".pdf" />
+      <div class="upload-icon">🌡️</div>
+      <div class="upload-label">Thermal Images Report</div>
+      <div class="upload-hint">Drop PDF or click to browse</div>
+      <div class="upload-filename" id="thermal-name"></div>
+    </div>
+  </div>
+
+  <button class="generate-btn" id="generate-btn" disabled>
+    <span>⚡</span> Generate DDR Report
+  </button>
+
+  <div class="status-bar" id="status-bar">
+    <div class="spinner"></div>
+    <span id="status-text">Initializing…</span>
+  </div>
+
+  <div class="error-box" id="error-box"></div>
+
+  <!-- REPORT OUTPUT -->
+  <div id="report-output">
+    <div class="report-header">
+      <div>
+        <div style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Detailed Diagnostic Report</div>
+        <div class="report-title" id="report-title">Property Inspection DDR</div>
+      </div>
+      <div class="report-meta" id="report-meta"></div>
+    </div>
+
+    <div id="sections-container"></div>
+
+    <div class="actions-bar">
+      <button class="action-btn primary" onclick="downloadReport()">⬇ Download Report (HTML)</button>
+      <button class="action-btn" onclick="printReport()">🖨 Print / Save PDF</button>
+      <button class="action-btn" onclick="resetApp()">↺ New Report</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── STATE ─────────────────────────────────────────
+let inspectionFile = null;
+let thermalFile = null;
+let reportData = null;
+
+// ─── FILE HANDLING ──────────────────────────────────
+document.getElementById('inspection-file').addEventListener('change', e => {
+  inspectionFile = e.target.files[0];
+  document.getElementById('inspection-name').textContent = inspectionFile ? '✓ ' + inspectionFile.name : '';
+  document.getElementById('inspection-drop').classList.toggle('has-file', !!inspectionFile);
+  checkReady();
+});
+document.getElementById('thermal-file').addEventListener('change', e => {
+  thermalFile = e.target.files[0];
+  document.getElementById('thermal-name').textContent = thermalFile ? '✓ ' + thermalFile.name : '';
+  document.getElementById('thermal-drop').classList.toggle('has-file', !!thermalFile);
+  checkReady();
+});
+
+// Drag and drop
+['inspection-drop','thermal-drop'].forEach(id => {
+  const card = document.getElementById(id);
+  card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('dragging'); });
+  card.addEventListener('dragleave', () => card.classList.remove('dragging'));
+  card.addEventListener('drop', e => {
+    e.preventDefault();
+    card.classList.remove('dragging');
+    const fileInput = card.querySelector('input[type="file"]');
+    if (e.dataTransfer.files[0]) {
+      fileInput.files = e.dataTransfer.files;
+      fileInput.dispatchEvent(new Event('change'));
+    }
+  });
+});
+
+function checkReady() {
+  document.getElementById('generate-btn').disabled = !(inspectionFile && thermalFile);
+}
+
+// ─── MAIN GENERATE ──────────────────────────────────
+document.getElementById('generate-btn').addEventListener('click', generateReport);
+
+async function generateReport() {
+  setStatus(true, 'Reading PDF files…');
+  hideError();
+  document.getElementById('report-output').classList.remove('active');
+  document.getElementById('generate-btn').disabled = true;
+
+  try {
+    setStatus(true, 'Converting documents to base64…');
+    const [inspectionB64, thermalB64] = await Promise.all([
+      fileToBase64(inspectionFile),
+      fileToBase64(thermalFile)
+    ]);
+
+    setStatus(true, 'Sending to AI — extracting observations…');
+
+    const systemPrompt = `You are an expert property inspector and report writer. Your job is to read inspection data and thermal imaging data, then produce a structured Detailed Diagnostic Report (DDR).
+
+RULES:
+- Only use facts from the provided documents. DO NOT invent information.
+- If information is missing, write exactly "Not Available".
+- If information conflicts between documents, mention the conflict clearly.
+- Use simple, client-friendly language. Avoid excessive technical jargon.
+- Be thorough but concise.
+
+Respond ONLY with a valid JSON object, no markdown, no preamble, exactly this structure:
+{
+  "property_info": {
+    "property_type": "...",
+    "floors": "...",
+    "inspection_date": "...",
+    "inspected_by": "...",
+    "previous_audit": "...",
+    "previous_repairs": "...",
+    "overall_score": "...",
+    "thermal_device": "..."
+  },
+  "issue_summary": "A 2-3 sentence plain-language summary of the main problems found.",
+  "area_observations": [
+    {
+      "area": "Area name (e.g. Hall, Master Bedroom)",
+      "negative_side": "What damage/issue was observed on the affected side",
+      "positive_side": "What was found as the likely source on the exposed side",
+      "thermal_reading": "Hotspot/coldspot temperatures if available from thermal report, else Not Available",
+      "thermal_image_ref": "Thermal image reference number if identifiable, else Not Available"
+    }
+  ],
+  "root_causes": [
+    {
+      "cause": "Root cause description",
+      "affects": "Which areas this affects"
+    }
+  ],
+  "severity_assessment": [
+    {
+      "issue": "Issue name",
+      "severity": "High|Medium|Low",
+      "reasoning": "Why this severity was assigned"
+    }
+  ],
+  "recommended_actions": [
+    {
+      "action": "What needs to be done",
+      "priority": "Immediate|Short-term|Long-term",
+      "area": "Where"
+    }
+  ],
+  "additional_notes": "Any other relevant observations not covered above. Write Not Available if none.",
+  "missing_or_unclear": [
+    "Item of missing or unclear information"
+  ]
+}`;
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4000,
+        system: systemPrompt,
+        messages: [{
+          role: "user",
+          content: [
+            {
+              type: "document",
+              source: { type: "base64", media_type: "application/pdf", data: inspectionB64 },
+              title: "Inspection Report"
+            },
+            {
+              type: "document",
+              source: { type: "base64", media_type: "application/pdf", data: thermalB64 },
+              title: "Thermal Images Report"
+            },
+            {
+              type: "text",
+              text: "Generate the DDR JSON from both documents above. Extract all 7 required sections. For thermal data, match readings to areas as best as possible based on the document order and descriptions."
+            }
+          ]
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || `API error ${response.status}`);
+    }
+
+    setStatus(true, 'Parsing and rendering report…');
+    const data = await response.json();
+    const rawText = data.content.map(b => b.text || '').join('');
+
+    let jsonStr = rawText;
+    // strip any markdown fences if present
+    jsonStr = jsonStr.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+
+    reportData = JSON.parse(jsonStr);
+    renderReport(reportData);
+    setStatus(false);
+    document.getElementById('report-output').classList.add('active');
+    document.getElementById('report-output').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch (err) {
+    setStatus(false);
+    showError('Error generating report: ' + err.message);
+    document.getElementById('generate-btn').disabled = false;
+  }
+}
+
+// ─── RENDER REPORT ──────────────────────────────────
+function renderReport(d) {
+  const info = d.property_info || {};
+
+  document.getElementById('report-title').textContent = 'Property Inspection — Detailed Diagnostic Report';
+  document.getElementById('report-meta').innerHTML = `
+    <div><b>Date:</b> ${info.inspection_date || 'Not Available'}</div>
+    <div><b>Inspected By:</b> ${info.inspected_by || 'Not Available'}</div>
+    <div><b>Property Type:</b> ${info.property_type || 'Not Available'}</div>
+    <div><b>Floors:</b> ${info.floors || 'Not Available'}</div>
+    <div><b>Score:</b> ${info.overall_score || 'Not Available'}</div>
+  `;
+
+  const container = document.getElementById('sections-container');
+  container.innerHTML = '';
+
+  const sections = [
+    { num: '01', title: 'Property Issue Summary', render: renderSummary },
+    { num: '02', title: 'Area-wise Observations', render: renderObservations },
+    { num: '03', title: 'Probable Root Causes', render: renderRootCauses },
+    { num: '04', title: 'Severity Assessment', render: renderSeverity },
+    { num: '05', title: 'Recommended Actions', render: renderActions },
+    { num: '06', title: 'Additional Notes', render: renderNotes },
+    { num: '07', title: 'Missing or Unclear Information', render: renderMissing },
+  ];
+
+  sections.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'report-section';
+    div.innerHTML = `
+      <div class="section-header" onclick="toggleSection(this)">
+        <div class="section-num">${s.num}</div>
+        <div class="section-title">${s.title}</div>
+        <div class="section-chevron">▼</div>
+      </div>
+      <div class="section-body">${s.render(d)}</div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function toggleSection(header) {
+  header.classList.toggle('collapsed');
+  header.nextElementSibling.classList.toggle('hidden');
+}
+
+function renderSummary(d) {
+  return `<p>${d.issue_summary || '<span class="na-text">Not Available</span>'}</p>`;
+}
+
+function renderObservations(d) {
+  if (!d.area_observations || !d.area_observations.length) return '<span class="na-text">Not Available</span>';
+  return d.area_observations.map(o => `
+    <div class="obs-item">
+      <div class="obs-dot"></div>
+      <div>
+        <div class="obs-area">${o.area || 'Unknown Area'}</div>
+        <div class="obs-text">
+          <strong>Affected Side:</strong> ${o.negative_side || 'Not Available'}<br>
+          <strong>Source/Exposed Side:</strong> ${o.positive_side || 'Not Available'}<br>
+          <strong>Thermal Reading:</strong>
+          ${o.thermal_reading && o.thermal_reading !== 'Not Available'
+            ? `<span class="thermal-tag">🌡 ${o.thermal_reading}</span>`
+            : '<span class="na-text">Not Available</span>'
+          }
+          ${o.thermal_image_ref && o.thermal_image_ref !== 'Not Available'
+            ? `&nbsp;<span class="thermal-tag">📷 Ref: ${o.thermal_image_ref}</span>`
+            : ''
+          }
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderRootCauses(d) {
+  if (!d.root_causes || !d.root_causes.length) return '<span class="na-text">Not Available</span>';
+  return `<table class="report-table">
+    <thead><tr><th>#</th><th>Root Cause</th><th>Areas Affected</th></tr></thead>
+    <tbody>
+      ${d.root_causes.map((c,i) => `
+        <tr>
+          <td style="font-family:'DM Mono',monospace;color:var(--text-muted)">${String(i+1).padStart(2,'0')}</td>
+          <td>${c.cause || 'Not Available'}</td>
+          <td style="color:var(--accent2)">${c.affects || 'Not Available'}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>`;
+}
+
+function renderSeverity(d) {
+  if (!d.severity_assessment || !d.severity_assessment.length) return '<span class="na-text">Not Available</span>';
+  return `<table class="report-table">
+    <thead><tr><th>Issue</th><th>Severity</th><th>Reasoning</th></tr></thead>
+    <tbody>
+      ${d.severity_assessment.map(s => {
+        const lvl = (s.severity||'').toLowerCase();
+        const cls = lvl === 'high' ? 'severity-high' : lvl === 'medium' ? 'severity-medium' : 'severity-low';
+        return `<tr>
+          <td>${s.issue || 'Not Available'}</td>
+          <td><span class="severity-badge ${cls}">${s.severity || 'N/A'}</span></td>
+          <td style="color:var(--text-muted)">${s.reasoning || 'Not Available'}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+}
+
+function renderActions(d) {
+  if (!d.recommended_actions || !d.recommended_actions.length) return '<span class="na-text">Not Available</span>';
+  return d.recommended_actions.map(a => {
+    const p = (a.priority||'').toLowerCase().replace('-','');
+    const cls = p.includes('immediate') ? 'priority-immediate' : p.includes('short') ? 'priority-short' : 'priority-long';
+    return `<div class="action-item">
+      <span class="action-priority ${cls}">${a.priority || 'N/A'}</span>
+      <div>
+        <div style="font-size:14px;margin-bottom:3px">${a.action || 'Not Available'}</div>
+        <div style="font-size:12px;font-family:'DM Mono',monospace;color:var(--accent)">${a.area || ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderNotes(d) {
+  if (!d.additional_notes || d.additional_notes === 'Not Available') return '<span class="na-text">Not Available</span>';
+  return `<p>${d.additional_notes}</p>`;
+}
+
+function renderMissing(d) {
+  if (!d.missing_or_unclear || !d.missing_or_unclear.length) return '<span class="na-text">No missing information identified.</span>';
+  return d.missing_or_unclear.map(m => `
+    <div class="missing-item">⚠️ &nbsp;${m}</div>
+  `).join('');
+}
+
+// ─── UTILITIES ──────────────────────────────────────
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function setStatus(active, text) {
+  const bar = document.getElementById('status-bar');
+  bar.classList.toggle('active', active);
+  if (text) document.getElementById('status-text').textContent = text;
+}
+
+function showError(msg) {
+  const box = document.getElementById('error-box');
+  box.textContent = msg;
+  box.classList.add('active');
+}
+
+function hideError() {
+  document.getElementById('error-box').classList.remove('active');
+}
+
+function resetApp() {
+  inspectionFile = null; thermalFile = null; reportData = null;
+  document.getElementById('inspection-file').value = '';
+  document.getElementById('thermal-file').value = '';
+  document.getElementById('inspection-name').textContent = '';
+  document.getElementById('thermal-name').textContent = '';
+  document.getElementById('inspection-drop').classList.remove('has-file');
+  document.getElementById('thermal-drop').classList.remove('has-file');
+  document.getElementById('report-output').classList.remove('active');
+  document.getElementById('sections-container').innerHTML = '';
+  document.getElementById('generate-btn').disabled = true;
+  hideError();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function downloadReport() {
+  const html = document.documentElement.outerHTML;
+  const blob = new Blob([html], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'DDR_Report.html';
+  a.click();
+}
+
+function printReport() {
+  window.print();
+}
+</script>
+
+</body>
+</html>

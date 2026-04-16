@@ -1,25 +1,25 @@
 from groq import Groq
-import os
-from dotenv import load_dotenv
-load_dotenv()
+import streamlit as st
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
 def generate_ddr(merged_data):
+
     prompt = f"""
-You are a building inspection expert.
+You are a STRICT building inspection analyst.
 
-Based ONLY on the following observations, generate a structured DDR report.
+You MUST follow ALL rules:
+- Do NOT invent information
+- Use ONLY provided data
+- If data is missing → write "Not Available"
+- If conflict exists → explicitly mention "Conflict detected"
+- Use simple, client-friendly language
 
-Observations:
+INPUT DATA:
 {merged_data}
 
-Rules:
-- Do NOT invent data
-- Mention "Not Available" where needed
-- Keep it client-friendly
+Generate a structured DDR:
 
-Output format:
 1. Property Issue Summary
 2. Area-wise Observations
 3. Probable Root Cause
@@ -30,9 +30,9 @@ Output format:
 """
 
     response = client.chat.completions.create(
-        model="openai/gpt-oss-120b",
+        model="llama3-70b-8192",
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
+        temperature=0.2
     )
 
     return response.choices[0].message.content

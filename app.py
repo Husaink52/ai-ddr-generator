@@ -1,10 +1,14 @@
 import streamlit as st
-import os
 from extractor import extract_pdf_content
-from processor import extract_observations, extract_thermal_data, merge_data
+from processor import (
+    extract_observations,
+    extract_thermal_data,
+    merge_data,
+    ensure_not_available
+)
 from generator import generate_ddr
 
-st.set_page_config(page_title="DDR Generator", layout="wide")
+st.set_page_config(page_title="AI DDR Generator", layout="wide")
 
 st.title(" AI DDR Report Generator")
 
@@ -23,7 +27,7 @@ if inspection_file and thermal_file:
 
     if st.button("Generate DDR Report"):
 
-        with st.spinner("Processing..."):
+        with st.spinner("Processing documents..."):
 
             # Extract
             inspection_text, inspection_images = extract_pdf_content("inspection.pdf")
@@ -32,7 +36,9 @@ if inspection_file and thermal_file:
             # Process
             observations = extract_observations(inspection_text)
             thermal_data = extract_thermal_data(thermal_text)
+
             merged_data = merge_data(observations, thermal_data)
+            merged_data = ensure_not_available(merged_data)
 
             # Generate DDR
             ddr = generate_ddr(merged_data)
@@ -40,6 +46,6 @@ if inspection_file and thermal_file:
         st.subheader(" Generated DDR Report")
         st.write(ddr)
 
-        st.subheader(" Extracted Images (Sample)")
+        st.subheader(" Sample Extracted Images")
         for img in inspection_images[:5]:
             st.image(img["path"], caption=f"Page {img['page']}")

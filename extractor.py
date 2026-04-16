@@ -1,4 +1,4 @@
-import fitz  # PyMuPDF
+import fitz
 import os
 
 def extract_pdf_content(file_path, output_folder="extracted_images"):
@@ -13,8 +13,7 @@ def extract_pdf_content(file_path, output_folder="extracted_images"):
         text = page.get_text()
         full_text.append(text)
 
-        image_list = page.get_images(full=True)
-        for img_index, img in enumerate(image_list):
+        for img_index, img in enumerate(page.get_images(full=True)):
             xref = img[0]
             base_image = doc.extract_image(xref)
             image_bytes = base_image["image"]

@@ -1,12 +1,25 @@
 import re
 
+KEYWORDS = ["dampness", "leakage", "crack", "seepage", "hollowness"]
+
+AREAS = ["hall", "bedroom", "kitchen", "bathroom", "parking", "external wall"]
+
+def detect_area(text):
+    for area in AREAS:
+        if area in text.lower():
+            return area.title()
+    return "Unknown"
+
+
 def extract_observations(text):
     observations = []
 
-    lines = text.split("\n")
-    for line in lines:
-        if "dampness" in line.lower() or "leakage" in line.lower():
-            observations.append(line.strip())
+    for line in text.split("\n"):
+        if any(k in line.lower() for k in KEYWORDS):
+            observations.append({
+                "area": detect_area(line),
+                "issue": line.strip()
+            })
 
     return observations
 
@@ -27,13 +40,32 @@ def merge_data(observations, thermal_data):
 
     for obs in observations:
         entry = {
-            "observation": obs,
-            "thermal_flag": None
+            "area": obs["area"],
+            "issue": obs["issue"],
+            "thermal_flag": "Not Available",
+            "conflict": None
         }
 
-        if thermal_data["min_temp"] and thermal_data["min_temp"] < 23:
-            entry["thermal_flag"] = "Possible moisture detected"
+        # Thermal logic
+        if thermal_data["min_temp"] is not None:
+            if thermal_data["min_temp"] < 23:
+                entry["thermal_flag"] = "Moisture anomaly detected"
+            else:
+                entry["thermal_flag"] = "No significant anomaly"
+
+        # Conflict detection
+        if "no" in obs["issue"].lower() and entry["thermal_flag"] == "Moisture anomaly detected":
+            entry["conflict"] = "Conflict detected between inspection and thermal data"
 
         merged.append(entry)
 
     return merged
+
+
+def ensure_not_available(data):
+    for d in data:
+        if not d.get("issue"):
+            d["issue"] = "Not Available"
+        if not d.get("area"):
+            d["area"] = "Not Available"
+    return data
